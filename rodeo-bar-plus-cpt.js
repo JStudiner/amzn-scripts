@@ -63,35 +63,100 @@
         makeDisplayParentDiv(divs);
     }
 
-    function checkCPTTime(table) {
+    function checkTotalTime() {
+        const totalTable=document.getElementById('TotalTable')
+        const currentHour = new Date().getHours();
+        let nextCPTTime = '';
+        const firstRowFifthColumn = totalTable.rows[0].cells[4].textContent.trim();
+        console.log(firstRowFifthColumn)
+        if (firstRowFifthColumn === "Later  Total") {
 
-        const nextCPT = getNextCPT(table);
-        
-        let columnIndex = 4;
-        while (columnIndex < table.rows[0].cells.length) {
-            const value = table.rows[0].cells[columnIndex].textContent.trim();
-            if (value.includes(nextCPT)) {
-                return columnIndex;
-            }
-            columnIndex++;
+            return "Later  Total";
         }
-        return 4;
+        // Loop through columns starting from the 5th
+        for (let i = 4; i < totalTable.rows[0].cells.length; i++) {
+
+            const cell = totalTable.rows[0].cells[i];
+            let timeStr = cell.textContent.trim();
+             // Extract only the time part (assuming it's in the format "Nov 11 02:00")
+            if (timeStr==="Later  Total"){
+                console.log("harskeet");
+                return "Later  Total"
+            }
+            timeStr = timeStr.split('\n').pop().trim();
+
+            const hourPart = parseInt(timeStr.split(':')[0]); // Extract the hour part
+
+
+           // Check if current time is after 19:00
+            if (currentHour >= 19) {
+                // Adjust for next day if current hour is late night and column hour is early morning
+                if (currentHour > 20 && hourPart < 4) {
+                    nextCPTTime = timeStr;
+                    break;
+                } else if (hourPart >= 0 && hourPart <= 3) {
+                    // Consider times after midnight as greater
+                    nextCPTTime = timeStr;
+                    break;
+                } else if (hourPart > currentHour) {
+                    nextCPTTime = timeStr;
+                    break;
+                }
+            } else {
+                // If current time is before 19:00, use the normal comparison
+                if (hourPart > currentHour) {
+                    nextCPTTime = timeStr;
+                    break;
+                }
+            }
+        }
+
+        return nextCPTTime
     } // Default to the 5th column (index 4) if the CPT time is not found in other columns
+
+
+    function getAnyTableTime(table){
+        const totalTime = checkTotalTime();
+        // Assuming totalTime is in the format "HH:MM"
+        let totalHour = ""
+        if (totalTime === "Later  Total") {
+            totalHour = "Later  Total";
+        }
+        else{
+            totalHour = parseInt(totalTime.split(':')[0]);
+        }
+
+        for (let i = 4; i < table.rows[0].cells.length; i++) {
+            const cellTimeStr = table.rows[0].cells[i].textContent.trim().split('\n').pop().trim();
+            const cellHour = parseInt(cellTimeStr.split(':')[0]);
+            if (cellTimeStr ===totalHour){
+                return i;
+            }
+            if (i === 4 && (cellHour > totalHour)) {
+                return 0;
+            }
+
+            if (cellHour === totalHour) {
+                return i; // Return the matching column index
+            }
+        }
+
+        return 0; // Return -1 if no matching column is found
+    }
 
     function makeDisplayParentDiv(divs) {
         let displayDiv = document.createElement('div');
         let style = displayDiv.style;
         style.display = 'flex';
         style.gap = '1vw';
-        divs.forEach(div => {displayDiv.appendChild(div)
-                            console.log(div)});
+        divs.forEach(div => {displayDiv.appendChild(div)});
         parentDiv.appendChild(displayDiv);
     }
 
     function makeCPTHeader(){
         const totalTable=document.getElementById('TotalTable')
-        const cptColumnIndex = checkCPTTime(totalTable);
-        const cptTime =totalTable.rows[0].cells[cptColumnIndex].textContent.trim();
+        const cptIndex = getAnyTableTime(totalTable);
+        const cptTime =totalTable.rows[0].cells[cptIndex].textContent.trim();
         const [date, time] = cptTime.split('\n'); // splits at newline to get ["Sep 15", "06:00"]
         let div = document.createElement('div');
 
@@ -108,60 +173,63 @@
         const rebinTable = document.getElementById('RebinBufferedTable');
         let rebinBuffered = 0;
         const totalTable=document.getElementById('TotalTable')
-        const cptColumnIndex = checkCPTTime(totalTable);
-        if (rebinTable){
+
+        if (rebinTable) {
             const lastRow = rebinTable.rows[rebinTable.rows.length - 1];
-            rebinBuffered = checkCPTTime(rebinTable) ? parseInt(lastRow.cells[cptColumnIndex].textContent.trim()) : 0;
+            const columnIndex = getAnyTableTime(rebinTable);
+            rebinBuffered = columnIndex !== 0 ? parseInt(lastRow.cells[columnIndex].textContent.trim(), 10) : 0;
         }
-        else{
-            rebinBuffered=0
-        }
+        console.log(rebinBuffered)
         const ppTable = document.getElementById('PickingPickedTable');
 
         let ppMultis=0
-        // Loop through rows of the table.
-        if(checkCPTTime(ppTable)){
+        const ppColumnIndex = getAnyTableTime(ppTable);
+        // Loop through rows of the ppTable.
+        if (ppColumnIndex !== 0) {
             for (let i = 0; i < ppTable.rows.length; i++) {
                 const row = ppTable.rows[i];
-
-                // Get values from first and fifth columns.
+                // Get values from first and the relevant column.
                 const criteriaValue = row.cells[0].textContent.trim();
-                const pickValue = parseInt(row.cells[cptColumnIndex].textContent.trim(), 10); // Convert to number.
+                const pickValue = parseInt(row.cells[ppColumnIndex].textContent.trim(), 10); // Convert to number.
+
                 // Check criteria and add to appropriate bucket.
                 switch(criteriaValue) {
                     case "PPMultiBldgWide":
-                        ppMultis+=pickValue
+                        ppMultis += pickValue;
                         break;
                     case "PPMultiBldgWideOP":
-                        ppMultis+=pickValue
+                        ppMultis += pickValue;
                         break;
                     case "PPMultiFloor":
-                        ppMultis+=pickValue
+                        ppMultis += pickValue;
                         break;
                     case "PPMultiWrap":
-                        ppMultis+=pickValue
+                        ppMultis += pickValue;
                         break;
                     default:
                         break;
                 }
             }
+
         }
         let div = document.createElement('div');
-        const sortable = ppMultis+rebinBuffered
-        div.textContent = `Unsorted: ${sortable}`
+        const sortable = ppMultis + rebinBuffered;
+        div.textContent = `Unsorted: ${sortable}`;
         styleCPTDiv(div);
-        return div
-
-
+        return div;
     }
 
     // New functions for CPT metrics
     function makeTotalCPTItemsDiv() {
+
         // Assuming you have a way to get total CPT items
         const totalTable=document.getElementById('TotalTable')
+        const totalIndex = getAnyTableTime(totalTable);
+        
         // Fetch the value from the bottom element of the 5th row.
         const lastRow = totalTable.rows[totalTable.rows.length - 1];
-        const totalCPTItems = lastRow.cells[4].textContent.trim();
+       
+        const totalCPTItems = lastRow.cells[totalIndex].textContent.trim();
 
         let div = document.createElement('div');
         div.textContent = `Total: ${totalCPTItems}`;
@@ -173,13 +241,14 @@
 
     function makePickingNotYetPickedDiv() {
         const totalTable=document.getElementById('TotalTable')
-        const cptColumnIndex = checkCPTTime(totalTable);
         // Assuming you have a way to get total CPT items
         const pnypTable=document.getElementById('PickingNotYetPickedTable')
+
+        const columnIndex = getAnyTableTime(pnypTable);
+        console.log(columnIndex);
         // Fetch the value from the bottom element of the 5th row.
         const lastRow = pnypTable.rows[pnypTable.rows.length - 1];
-        const unpicked = checkCPTTime(pnypTable)?lastRow.cells[cptColumnIndex].textContent.trim():0;
-
+        const unpicked = columnIndex !== 0 ? lastRow.cells[columnIndex].textContent.trim() : 0;
         let div = document.createElement('div');
         div.textContent = `Not Picked: ${unpicked}`;
         styleCPTDiv(div);
@@ -187,48 +256,46 @@
     }
 
     function makePickingPickedDiv() {
-        const ppTable = document.getElementById('PickingPickedTable')
+        const ppTable = document.getElementById('PickingPickedTable');
+        const columnIndex = getAnyTableTime(ppTable);
         let bins = {};
-        if(checkCPTTime(ppTable)){
-            bins = getPPValues(ppTable);
-        }else{
+
+        if (columnIndex !== 0) {
+            bins = getPPValues(ppTable, columnIndex);
+        } else {
             bins = {
                 multis: 0,
                 singles: 0,
                 line8: 0,
-                teamlift:0,
+                teamlift: 0,
             };
         }
-        const total = bins.singles+bins.line8+bins.teamlift+bins.multis
+
+        const total = bins.singles + bins.line8 + bins.teamlift + bins.multis;
         let div = document.createElement('div');
         div.textContent = `Packable: ${total} (Sorted: ${bins.multis}, Singles: ${bins.singles}, Line 8: ${bins.line8}, TeamLift: ${bins.teamlift})`;
         styleCPTDiv(div);
         return div;
     }
-    function getPPValues(ppTable){
 
-
+    function getPPValues(ppTable, columnIndex) {
         const bins = {
             multis: 0,
             singles: 0,
             line8: 0,
-            teamlift:0,
+            teamlift: 0,
         };
 
         const sortedTable = document.getElementById('SortedTable');
+        const sortedTableIndex = getAnyTableTime(sortedTable);
         const lastRow = sortedTable.rows[sortedTable.rows.length - 1];
-        const sorted = lastRow.cells[4].textContent.trim();
-        console.log(sorted);
-        bins.multis=checkCPTTime(sortedTable)?parseInt(sorted):0;
+        bins.multis = sortedTableIndex != 0 ? parseInt(lastRow.cells[sortedTableIndex].textContent.trim(), 10) : 0;
 
-        // Loop through rows of the table.
+        // Loop through rows of the ppTable.
         for (let i = 0; i < ppTable.rows.length; i++) {
             const row = ppTable.rows[i];
-
-            // Get values from first and fifth columns.
             const criteriaValue = row.cells[0].textContent.trim();
-            const pickValue = parseInt(row.cells[4].textContent.trim(), 10); // Convert to number.
-            console.log(criteriaValue+pickValue)
+            const pickValue = parseInt(row.cells[columnIndex].textContent.trim(), 10); // Convert to number.
 
             // Check criteria and add to appropriate bucket.
             switch(criteriaValue) {
@@ -261,7 +328,6 @@
                     break;
                 case "PPSingleTeamLift":
                     bins.teamlift+=pickValue;
-                    console.log(pickValue)
                     break;
                 case "PPSingleTeamLift1":
                     bins.teamlift+=pickValue;
@@ -274,13 +340,14 @@
                     break;
             }
         }
-        return bins
 
+        return bins;
     }
     function makeScannedCPT(){
         const scannedTable=document.getElementById('ScannedTable');
+        const columnIndex = getAnyTableTime(scannedTable)
         const lastRow=scannedTable.rows[scannedTable.rows.length-1];
-        const scanned=checkCPTTime(scannedTable)?lastRow.cells[4].textContent.trim():0;
+        const scanned=columnIndex!=0 ?lastRow.cells[columnIndex].textContent.trim():0;
         let div = document.createElement('div');
         div.textContent=`Spoos: ${scanned}`
         styleCPTDiv(div);
@@ -289,8 +356,9 @@
     }
      function makePSCPT(){
         const psTable=document.getElementById('ProblemSolvingTable');
+        const columnIndex = getAnyTableTime(psTable);
         const lastRow=psTable.rows[psTable.rows.length-1];
-        const ps= checkCPTTime(psTable)?lastRow.cells[4].textContent.trim():0;
+        const ps= columnIndex!=0?lastRow.cells[columnIndex].textContent.trim():0;
         let div = document.createElement('div');
         div.textContent=`Psolve: ${ps}`
         styleCPTDiv(div);
@@ -298,18 +366,26 @@
 
     }
 
-    function getNextCPT(table) {
-        const currentTime = getCurrentTime();
-        for (let columnIndex = 4; columnIndex < table.rows[0].cells.length; columnIndex++) {
-            const cellValue = table.rows[0].cells[columnIndex].textContent.trim();
-            const [date, time] = cellValue.split('\n');
-            if (time && time > currentTime) {
-                console.log(time)
-                return time;// Return the first time after the current time
-            }
-        }
-        return table.rows[0].cells[4].textContent.trim(); // Default to the 5th column if no time after current time is found
+   function getNextCPT(table) {
+    // Get the CPT time from the given table
+    const tableCPTTimeStr = table.rows[0].cells[4].textContent.trim();
+
+    // Get the CPT time from the TotalTable as the reference time
+    const totalTable = document.getElementById('TotalTable');
+    const totalCPTTimeStr = totalTable.rows[0].cells[4].textContent.trim();
+    // Compare the two times
+
+    return tableCPTTimeStr <= totalCPTTimeStr;
+   }
+
+    function convertToDateTime(timeStr) {
+        // Convert time string 'HH:MM' to a Date object
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hours, minutes, 0, 0);
+        return date;
     }
+
     //wip is picking picked + rebin buffered + sorted
     function makeWipDiv() {
         const pickingPicked = document.getElementById('PickingPickedTable').getElementsByClassName('grand-total')[0].getElementsByClassName('subtotal')[0].textContent.trim();
