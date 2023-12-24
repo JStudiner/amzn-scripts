@@ -8,8 +8,8 @@
 // @include     https://rodeo-*.amazon.com/*/Search?*
 // @include     https://rodeo-*.amazon.com/*/ExSD?*
 // @require     https://drive.corp.amazon.com/view/ORY1Scripts/libs/jquery/3.2.1/jquery.min.js
-// @updateURL    https://raw.githubusercontent.com/JStudiner/[repository]/[branch]/rodeo-dwells.user.js
-// @downloadURL  https://raw.githubusercontent.com/[username]/[repository]/[branch]/rodeo-dwells.user.js
+// @updateURL    https://raw.githubusercontent.com/JStudiner/amzn-scripts/main/rodeo-pack-dashboard.js
+// @downloadURL  https://raw.githubusercontent.com/JStudiner/amzn-scripts/main/rodeo-pack-dashboard.js
 
 // @grant       GM_getValue
 // @grant       GM_setValue
