@@ -41,7 +41,27 @@ this.$ = this.jQuery = jQuery.noConflict(true);
 
     function processSpoosData(data) {
         // Parse the data (this depends on the format of the data)
-        console.log(data);
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(htmlTable, 'text/html');
+        var rows = doc.querySelectorAll('table tr');
+        var data = [];
+
+        rows.forEach((row, index) => {
+            // Skip the header row
+            if (index === 0) return;
+
+            var cells = row.querySelectorAll('td');
+            var item = {
+                scannableId: cells[6].textContent,            // Assuming 7th column is Scannable ID
+                outerScannableId: cells[7].textContent,      // Assuming 8th column is Outer Scannable ID
+                expectedShipDate: cells[4].textContent,      // Assuming 5th column is Expected Ship Date
+                dwellTime: cells[16].textContent             // Assuming 17th column is Dwell Time
+            };
+
+            data.push(item);
+        });
+
+        return data;
 
     }
 
